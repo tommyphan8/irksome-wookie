@@ -7,69 +7,63 @@ var cheerio = require('cheerio');
 var app = express();
 
 
-
-
 urlNBA = 'http://www.nbastream.net/';
-urlLink = 'http://www.nbastream.net/chicago-bulls-at-boston-celtics-live-stream.html';
-var temp = [];
+
+//Global array of NBA Video URL JSON;
+var nbaVideoURLs = [];
 
 app.get('/scrape', function(req, res) {
-	createJSON();
-	res.send('Check console!');
+	res.json(nbaVideoURLs);
+
 });
 
 
 
-requestHTML(urlNBA, genLinks);
-//requestURL(urlLink);
-function createJSON() {
-	var jsonArray = [];
-	var json = {roomSlug: "", isBroadcasting : ""};
-
-	var p1 = new Promise(function(resolve, reject) {
-		
-		console.log("Promise");
-		for (i = 0; i < temp.length; i++) {
-			json.roomSlug = temp[i].roomSlug;
-			json.isBroadcasting = temp[i].isBroadcasting;
-			jsonArray.push(json);
-			//console.log(jsonArray);
-		}
-		resolve(jsonArray);
-
-	});
-		
-
-	p1.then(function(result)  {
-		console.log(JSON.stringify(jsonArray));
-	}, function(err) {
-		console.log(err);
-	});
-
-
-}
+requestHTML(urlNBA);
 
 
 function requestHTML(url, callback) {
 	
 	var $;
-	var links = [];
+	var nbaStream;
+
 
 	request(url, function(error, response, html) {
 
 		if(!error) {
 			$ = cheerio.load(html);
-			console.log($('.custom-box').contents().prevObject[0].children[1].children);
 
 
+			$('#featured').find('a').each(function(i, elem) {
+				if ($(this).attr('class') === undefined) {
+					
+					nbaStream = {url: "", time: "", date: "", team1: "", team2: "", isBroadcasting: "", m3u8: "", roomSlug: ""}; 
 
-			// $('#featured').find('a').each(function(i, elem) {
-			// 	if ($(this).attr('class') === undefined) {
-			// 		links.push("http://" + response.connection._host + '/' + $(this).attr('href'));
-			// 	}
-			// });
-			
-			//callback(links);
+					//parse URL for each game
+					nbaStream.url = ("http://" + response.connection._host + '/' + $(this).attr('href'));
+					
+					//parse the time 
+					nbaStream.time = $(this).children().eq(0).children().eq(0).children().eq(0).text() + " " +
+					 $(this).children().eq(0).children().eq(0).children().eq(1).children().eq(0).text().replace(/[\n  ]+/g,'')
+					 + " " + $(this).children().eq(0).children().eq(0).children().eq(1).children().eq(1).text().replace(/[\n  ]+/g,'');
+					
+					//parse the date
+					nbaStream.date = $(this).prevAll('h3').first().text();
+					
+					//parse the first team
+					nbaStream.team1 = $(this).children().eq(0).find('.box-title').eq(0).text().replace(/\n/g,'').replace(/  +/g,'');
+					
+					//parase the second team
+					nbaStream.team2 = $(this).children().eq(0).find('.box-title').eq(1).text().replace(/\n/g,'').replace(/  +/g,'');
+					
+					requestURL(nbaStream);
+					
+				}
+
+				
+			});
+
+
 		}
 		else {
 			console.log(error);
@@ -79,24 +73,19 @@ function requestHTML(url, callback) {
 	
 }
 
-function genLinks(links) {
-
-	for (i = 0; i < links.length; i++) {
-		requestURL(links[i]);
-	}
-}
 
 
-function requestURL(url, callback) {
+function requestURL(nbaStream, callback) {
 	
-	var $, link, roomSlug;
-	var json = {roomSlug : "", isBroadcasting: ""};
+	var $, link;
 
-	request(url, function(error, response, html) {
+	//console.log(nbaStream.url);
+	request(nbaStream.url, function(error, response, html) {
+		
 		if(!error) {
 			$ = cheerio.load(html);
 			link = "https://" + response.connection._host + "/" + $('#featured center iframe').attr('src');
-			//console.log(link);
+			
 			request(link, function(error, response, html) {
 				if(!error) {
 					$ = cheerio.load(html);
@@ -104,8 +93,10 @@ function requestURL(url, callback) {
 					//console.log(link);
 					if (link != undefined) {
 						//console.log(link);
+
 						request(link, function(error, response, html) {
 							if(!error) {
+
 								var windowRoom;
 								$ = cheerio.load(html);
 								
@@ -113,11 +104,16 @@ function requestURL(url, callback) {
 								windowRoom = $('*:contains("roomSlug")').filter('script').not('[type]').text();
 
 								//Match roomSlug parameter and insert into JSON
-								json.roomSlug = windowRoom.match(/"roomSlug": ".+"/)[0].replace(/[":]/g,'').replace("roomSlug ",'');
+								nbaStream.roomSlug = windowRoom.match(/"roomSlug": ".+"/)[0].replace(/[":]/g,'').replace("roomSlug ",'');
 								
 								//Match isBroadcasting  and insert into JSON
-								json.isBroadcasting = windowRoom.match(/"isBroadcasting": [^,]+/g)[0].replace(/[":]/g,'').replace("isBroadcasting ","");
-								temp.push(json);
+								nbaStream.isBroadcasting = windowRoom.match(/"isBroadcasting": [^,]+/g)[0].replace(/[":]/g,'').replace("isBroadcasting ",'');
+								
+								nbaStream.m3u8 = "https://video-cdn.streamup.com/app/" + nbaStream.roomSlug + "/playlist.m3u8"
+
+								//console.log(nbaStream);
+
+								nbaVideoURLs.push(nbaStream);
 							}
 							else  {
 								console.log(error);
