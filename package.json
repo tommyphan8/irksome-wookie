@@ -4,7 +4,8 @@
 	"dependencies" : {
 		"express" : "latest",
 		"request" : "latest",
-		"cheerio" : "latest"
+		"cheerio" : "latest",
+		"jade" : "latest"
 	}
 
 
