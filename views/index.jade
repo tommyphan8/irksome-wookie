@@ -1,21 +1,18 @@
 extends layout
 
 block content
-	h1!= title
-	p Welcome to our test
+	h1= title
 
-	//Wrapper
-	#Wrapper
+	//NBA Urls 
+	#NBAURL
 
-		//USER LIST
-		h2 User List
+		.date
+			h3
 
-		#userList
-			table
-				thead
-					th UserName
-					th Email
-					th Delete?
-				tbody
-		// /USER LIST
-	// /WRAPPER
+		.games
+
+		
+		.video(style='display:none')
+			.title 
+			video(id='video' controls auto play class="videoCentered" width='720')
+			button(class='btnClose') close

@@ -1,0 +1,10 @@
+img.teamIMG {
+	height: 10%;
+	width: 10%;
+}
+
+.customBox {
+	display: inline-block;
+	width: 400px;
+
+}
